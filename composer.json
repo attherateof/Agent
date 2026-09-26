@@ -1,0 +1,16 @@
+{
+    "name": "magestack/module-agent",
+    "description": "Local-LLM coding agent for Magento 2, exposed as a bin/magento CLI command. Developer mode only.",
+    "type": "magento2-module",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1",
+        "magento/framework": "*"
+    },
+    "autoload": {
+        "files": ["registration.php"],
+        "psr-4": {
+            "MageStack\\Agent\\": ""
+        }
+    }
+}
