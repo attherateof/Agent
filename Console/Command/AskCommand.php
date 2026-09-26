@@ -15,8 +15,7 @@ declare(strict_types=1);
 namespace MageStack\Agent\Console\Command;
 
 use Magento\Framework\Console\Cli;
-use MageStack\Agent\Model\Llm\OllamaClient;
-use Psr\Log\LoggerInterface;
+use MageStack\Agent\Model\Service\AskService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -29,17 +28,23 @@ use Throwable;
  */
 class AskCommand extends Command
 {
-    private const DEFAULT_OLLAMA_HOST = 'http://host.docker.internal:11434';
     private const DEFAULT_MODEL = 'qwen2.5-coder:14b';
     private const DEFAULT_NUM_CTX = 2048;
 
+    /**
+     * @param AskService $askService
+     * @param string|null $name
+     */
     public function __construct(
-        private readonly LoggerInterface $logger,
+        private readonly AskService $askService,
         ?string $name = null
     ) {
         parent::__construct($name);
     }
 
+    /**
+     * @return void
+     */
     protected function configure(): void
     {
         $this->setName('magestack:agent:ask')
@@ -51,43 +56,27 @@ class AskCommand extends Command
         parent::configure();
     }
 
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return int
+     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $question = trim((string) $input->getArgument('question'));
-        if ($question === '') {
-            $output->writeln('<error>Question cannot be empty.</error>');
-
-            return Cli::RETURN_FAILURE;
-        }
-
-        $model = (string) ($input->getOption('model') ?: (getenv('OLLAMA_MODEL') ?: self::DEFAULT_MODEL));
-        $host = (string) (getenv('OLLAMA_HOST') ?: self::DEFAULT_OLLAMA_HOST);
         $numCtxOption = $input->getOption('num-ctx');
-        $numCtx = (int) ($numCtxOption !== null
-            ? $numCtxOption
-            : (getenv('OLLAMA_ASK_NUM_CTX') ?: self::DEFAULT_NUM_CTX));
-        if ($numCtx < 512 || $numCtx > 131072) {
-            $output->writeln('<error>--num-ctx must be between 512 and 131072.</error>');
-
-            return Cli::RETURN_FAILURE;
-        }
+        $numCtx = $numCtxOption === null ? null : (int) $numCtxOption;
 
         try {
-            $client = new OllamaClient($host, $model, 0.1, $numCtx, 300, $this->logger);
-            $answer = $client->chat([
-                ['role' => 'user', 'content' => $question],
-            ], false);
+            $answer = $this->askService->ask(
+                (string) $input->getArgument('question'),
+                $input->getOption('model') === null ? null : (string) $input->getOption('model'),
+                $numCtx
+            );
             $output->writeln($answer);
 
             return Cli::RETURN_SUCCESS;
-        } catch (Throwable $e) {
-            $this->logger->error('[MageStack][Agent][Ask] Request failed', [
-                'model'         => $model,
-                'num_ctx'       => $numCtx,
-                'error_message' => $e->getMessage(),
-                'stack_trace'   => $e->getTraceAsString(),
-            ]);
-            $output->writeln('<error>' . $e->getMessage() . '</error>');
+        } catch (Throwable $exception) {
+            $output->writeln('<error>' . $exception->getMessage() . '</error>');
 
             return Cli::RETURN_FAILURE;
         }

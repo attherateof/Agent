@@ -15,7 +15,7 @@ declare(strict_types=1);
 namespace MageStack\Agent\Model\Agent;
 
 use Closure;
-use MageStack\Agent\Model\Tool\ToolInterface;
+use MageStack\Agent\Api\ToolInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
 

@@ -2,6 +2,9 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
 
+    <preference for="MageStack\Agent\Api\OllamaConfigurationInterface" type="MageStack\Agent\Model\Service\OllamaConfigurationProvider"/>
+    <preference for="MageStack\Agent\Api\OllamaConfigInterface" type="MageStack\Agent\Model\Service\OllamaConfig"/>
+
     <type name="Magento\Framework\Console\CommandList">
         <arguments>
             <argument name="commands" xsi:type="array">
@@ -27,13 +30,19 @@
         </arguments>
     </virtualType>
 
-    <type name="MageStack\Agent\Console\Command\RunCommand">
+    <type name="MageStack\Agent\Console\Command\AskCommand">
+        <arguments>
+            <argument name="askService" xsi:type="object">MageStack\Agent\Model\Service\AskService</argument>
+        </arguments>
+    </type>
+
+    <type name="MageStack\Agent\Model\Service\AskService">
         <arguments>
             <argument name="logger" xsi:type="object">MageStack\Agent\Logger\Logger</argument>
         </arguments>
     </type>
 
-    <type name="MageStack\Agent\Console\Command\AskCommand">
+    <type name="MageStack\Agent\Model\Service\AgentSessionService">
         <arguments>
             <argument name="logger" xsi:type="object">MageStack\Agent\Logger\Logger</argument>
         </arguments>

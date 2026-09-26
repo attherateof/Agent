@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace MageStack\Agent\Model\Tool;
 
+use MageStack\Agent\Api\ToolInterface;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use RuntimeException;

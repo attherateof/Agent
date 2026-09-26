@@ -1,11 +1,13 @@
 # MageStack_Agent
 
-A Magento 2 module that adds `bin/magento` commands for a coding agent and direct question mode.
-They talk to an [Ollama](https://ollama.com) model (default: `qwen2.5-coder:14b`); agent mode gives it
+A development-only Magento 2 / Mage-OS module that adds `bin/magento` commands for a coding agent
+and direct question mode. Both commands talk to an [Ollama](https://ollama.com) model (default:
+`qwen2.5-coder:14b`); agent mode gives it
 workspace-scoped file tools — read, write, edit, search, list files, validate PHP/XML syntax, and view
 `git diff` — so it can explore and modify **this Magento installation** on your behalf.
 
-**Developer mode only.** The command refuses to run in `default` or `production` mode.
+**Development-only.** Both commands refuse to run unless Magento is in `developer` mode. This is a
+runtime guard, not a replacement for excluding the package from production deployments.
 
 ---
 
@@ -39,37 +41,50 @@ app/code/MageStack/Agent/
 ├── registration.php                  Registers the module with Magento's ComponentRegistrar
 ├── composer.json                     Module metadata (magento2-module package)
 ├── README.md                         This file
-│
 ├── etc/
-│   ├── module.xml                    Declares the module (MageStack_Agent, no dependencies)
-│   └── di.xml                        Wires the CLI command + a dedicated logger channel
-│
-├── Console/Command/
-│   └── RunCommand.php                bin/magento magestack:agent:run — the entry point
-│   └── AskCommand.php                bin/magento magestack:agent:ask — plain model question
-│
-├── Model/Agent/
-│   ├── Agent.php                     The think → act → observe loop
-│   ├── Planner.php                   Builds the system prompt; parses model replies
-│   └── ToolExecutor.php              Dispatches tool calls, handles approval + errors
-│
-├── Model/Llm/
-│   └── OllamaClient.php              Talks to Ollama's /api/chat endpoint over cURL
-│
-├── Model/Context/
-│   ├── MagentoContext.php            Detects Magento, lists custom modules, states conventions
-│   └── CodebaseContext.php           Summarises the workspace (top-level dirs, file-type counts)
-│
-└── Model/Tool/
-    ├── ToolInterface.php             Contract every tool implements
-    ├── AbstractTool.php              Shared sandboxing (path resolution, denylist, process runner)
-    ├── ReadFileTool.php              Read a file / a line range
-    ├── WriteFileTool.php             Create or overwrite a file (asks for approval)
-    ├── EditFileTool.php              Replace one exact, unique snippet in a file (asks for approval)
-    ├── ListFilesTool.php             List files/folders under a path, skipping vendor/generated/etc.
-    ├── SearchCodeTool.php            grep-based content search
-    ├── TerminalTool.php              Validate workspace-contained PHP/XML syntax (asks for approval)
-    └── GitDiffTool.php               Show `git diff` for the workspace or one path
+│   ├── adminhtml/system.xml           Admin settings for Ollama
+│   ├── acl.xml                        Admin configuration ACL
+│   ├── config.xml                     Default Ollama settings
+│   ├── di.xml                         CLI registration and service preferences
+│   └── module.xml                     Module declaration
+├── Api/
+│   ├── AgentSessionInteractionInterface.php
+│   ├── OllamaConfigInterface.php
+│   ├── OllamaConfigurationInterface.php
+│   └── ToolInterface.php
+├── Console/
+│   ├── AgentConsolePresenter.php
+│   └── Command/
+│       ├── AskCommand.php
+│       └── RunCommand.php
+└── Model/
+    ├── Agent/
+    │   ├── Agent.php
+    │   ├── AgentRuntimeBuilder.php
+    │   ├── Planner.php
+    │   ├── ToolExecutor.php
+    │   └── ToolSetBuilder.php
+    ├── Context/
+    │   ├── CodebaseContext.php
+    │   └── MagentoContext.php
+    ├── Llm/
+    │   └── OllamaClient.php
+    ├── Service/
+    │   ├── AgentConfigurationProvider.php
+    │   ├── AgentSessionRequest.php
+    │   ├── AgentSessionService.php
+    │   ├── AskService.php
+    │   ├── OllamaConfig.php
+    │   └── OllamaConfigurationProvider.php
+    └── Tool/
+        ├── AbstractTool.php
+        ├── EditFileTool.php
+        ├── GitDiffTool.php
+        ├── ListFilesTool.php
+        ├── ReadFileTool.php
+        ├── SearchCodeTool.php
+        ├── TerminalTool.php
+        └── WriteFileTool.php
 ```
 
 ### What each file is doing
@@ -78,12 +93,23 @@ app/code/MageStack/Agent/
 |---|---|
 | `registration.php` | Tells Magento's component registrar this module exists at this path. Required for Magento to discover `app/code/MageStack/Agent`. |
 | `etc/module.xml` | Standard module declaration — name and setup version. No `<sequence>`, since the module is CLI-only and doesn't depend on other modules loading first. |
-| `etc/di.xml` | Two jobs: (1) registers `RunCommand` into Magento's `CommandList`, which is how `bin/magento` discovers new commands; (2) declares a Monolog `virtualType` logger that writes to `var/log/mage-agent.log`, and injects it into `RunCommand`. |
-| `Console/Command/RunCommand.php` | The Symfony `Command` behind `magestack:agent:run`. Checks developer mode, resolves the workspace (defaults to the Magento root via `DirectoryList::ROOT`), builds the tool list, the confirmation callback, the `Planner` and the `Agent`, then either runs one task or drops into an interactive `>` prompt loop. |
-| `Console/Command/AskCommand.php` | The `magestack:agent:ask` command. Sends only the question to the configured Ollama model, without agent tools or Magento/workspace context; defaults to a 2,048-token context to reduce memory use. |
+| `etc/di.xml` | Registers both commands and declares a dedicated Monolog logger. The logger is injected into the services that perform agent/session work. |
+| `Console/Command/RunCommand.php` | Thin Symfony CLI adapter: declares options, creates a session request and Symfony interaction adapter through generated factories, delegates to `AgentSessionService`, and maps its result to a CLI status. |
+| `Console/AgentConsolePresenter.php` | Implements `Api\AgentSessionInteractionInterface` using Symfony input/output and `QuestionHelper`; formats approval previews and model/tool events. |
+| `Console/Command/AskCommand.php` | Thin CLI adapter for `magestack:agent:ask`; delegates question validation and Ollama execution to `AskService`. |
 | `Model/Agent/Agent.php` | The actual loop: send the conversation to Ollama → parse the JSON reply → either call a tool and feed the result back, or return the final answer. Caps steps at 15, trims history to fit the context window, and aborts after 3 unparseable replies in a row or after seeing the same tool call repeated. |
 | `Model/Agent/Planner.php` | Builds the system prompt (base instructions + tool list + Magento/codebase context) and parses the model's JSON reply, including recovery from stray text or code fences around the JSON. |
 | `Model/Agent/ToolExecutor.php` | Looks up the requested tool by name, asks for approval if the tool requires it, runs it, catches any exception so a single failing tool never crashes the agent, truncates very long output, and logs failures. |
+| `Model/Agent/AgentRuntimeBuilder.php` / `ToolSetBuilder.php` | Compose the per-invocation agent and workspace-bound tools using Magento-generated factories, passing runtime workspace/model/approval settings explicitly. |
+| `Model/Service/AgentConfigurationProvider.php` | Enforces developer mode and resolves the workspace; delegates common host/model/context settings to `OllamaConfigurationInterface`. |
+| `Model/Service/OllamaConfig.php` | Implements `Api\OllamaConfigInterface` and reads persisted Admin settings through Magento's `ScopeConfigInterface`. |
+| `Model/Service/AgentSessionService.php` | Builds the agent through `AgentRuntimeBuilder` and coordinates tasks through `AgentSessionRequest` and the `Api\AgentSessionInteractionInterface` port, without depending on Symfony classes. |
+| `Model/Service/AskService.php` | Validates questions and sends them through `OllamaClientFactory`; shares host/model/context resolution with the agent through `OllamaConfigurationInterface` and defaults to a 2,048-token context. |
+| `Model/Service/OllamaConfigurationProvider.php` | Implements `Api\OllamaConfigurationInterface`, calls `OllamaConfigInterface`, and resolves defaults, environment/CLI overrides, and context-size validation. |
+| `Api/ToolInterface.php` | Public contract implemented by every agent tool. |
+| `Api/AgentSessionInteractionInterface.php` | Application port used by `AgentSessionService`; the console presenter implements it. |
+| `Api/OllamaConfigurationInterface.php` | Public contract for effective agent- and ask-mode Ollama settings. |
+| `Api/OllamaConfigInterface.php` | Contract for reading persisted host, model, and per-mode context settings. |
 | `Model/Llm/OllamaClient.php` | Sends the message history to `POST {OLLAMA_HOST}/api/chat` with `"format": "json"` (see §3) and returns the assistant's reply text. |
 | `Model/Context/MagentoContext.php` | Detects whether the workspace is a Magento install (`bin/magento` present) or a standalone module (`etc/module.xml`), reads the Magento edition/version from `composer.json`, lists custom modules under `app/code`, and appends a fixed block of Magento coding conventions. |
 | `Model/Context/CodebaseContext.php` | Lists top-level entries and a rough count of files by extension, so the model has a mental map before it starts calling `list_files`/`search_code`. |
@@ -117,19 +143,29 @@ app/code/MageStack/Agent/
      loop repeats.
    - If it's `final`, that text is returned as the answer and the loop stops.
    - This repeats for up to 15 steps per task, with older messages trimmed once the conversation
-     exceeds 40 messages (so `num_ctx` — 16384 tokens by default — isn't exceeded on long
-     sessions).
-4. **Model/host configuration**: read from environment variables, with `--model`/`--workspace`
-   CLI options able to override at runtime:
+     exceeds 40 messages (agent context defaults to 8,192 tokens; ask mode defaults to 2,048).
+4. **Model/host configuration**: defaults are in `etc/config.xml` and can be changed in
+   **Stores > Configuration > MageStack > Agent > Ollama**. Environment settings override Admin
+   values, and command options override those for the current invocation:
    - `OLLAMA_HOST` — default `http://host.docker.internal:11434` (reaches Ollama on Windows from
      inside the PHP container)
    - `OLLAMA_MODEL` — default `qwen2.5-coder:14b`
    - `AGENT_WORKSPACE` — default the Magento root
-  - `OLLAMA_ASK_NUM_CTX` — default context size for ask mode (2,048 tokens)
+    - `OLLAMA_NUM_CTX` — optional agent context override (Admin default: 8,192)
+    - `OLLAMA_ASK_NUM_CTX` — optional ask-mode context override (Admin default: 2,048)
 
 ---
 
 ## 4. Install
+
+For a Composer-published package, add it as a development dependency in the Magento or Mage-OS
+project root:
+
+```bash
+composer require --dev magestack/module-agent
+```
+
+Then enable it in the development environment:
 
 ```bash
 bin/magento deploy:mode:set developer   # if not already in developer mode
@@ -137,6 +173,16 @@ bin/magento module:enable MageStack_Agent
 bin/magento setup:upgrade
 bin/magento cache:flush
 ```
+
+Deploy production artifacts with `composer install --no-dev`; this omits Composer `require-dev`
+packages. If you use this module directly from `app/code` instead of Composer, ensure your
+production build/deployment excludes `app/code/MageStack/Agent` and does not enable
+`MageStack_Agent` in the production `app/etc/config.php`. A package cannot force a consuming
+project to classify it as `require-dev`, and Magento's developer-mode guard only blocks command
+execution; it does not uninstall module files.
+
+The module targets the common `magento/framework` API used by Magento Open Source/Adobe Commerce and
+Mage-OS. Validate against the exact platform version in your project during CI.
 
 ### Ollama connectivity (Windows host + Docker/WSL)
 

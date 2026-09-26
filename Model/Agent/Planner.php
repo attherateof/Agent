@@ -15,7 +15,7 @@ declare(strict_types=1);
 namespace MageStack\Agent\Model\Agent;
 
 use InvalidArgumentException;
-use MageStack\Agent\Model\Tool\ToolInterface;
+use MageStack\Agent\Api\ToolInterface;
 
 /**
  * Builds the system prompt and parses the model reply into a tool call or final answer;

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <magestack_agent>
+            <ollama>
+                <host>http://host.docker.internal:11434</host>
+                <model>qwen2.5-coder:14b</model>
+                <agent_num_ctx>8192</agent_num_ctx>
+                <ask_num_ctx>2048</ask_num_ctx>
+            </ollama>
+        </magestack_agent>
+    </default>
+</config>

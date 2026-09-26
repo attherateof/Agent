@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="magestack" translate="label" sortOrder="800">
+            <label>MageStack Agent</label>
+        </tab>
+        <section id="magestack_agent" translate="label" sortOrder="810" showInDefault="1" showInWebsite="0" showInStore="0">
+            <label>Agent</label>
+            <tab>magestack</tab>
+            <resource>MageStack_Agent::config</resource>
+            <group id="ollama" translate="label" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Ollama</label>
+                <field id="host" translate="label comment" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Ollama Host</label>
+                    <comment>Base URL for the Ollama API. Environment variable OLLAMA_HOST overrides this value.</comment>
+                </field>
+                <field id="model" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Model</label>
+                    <comment>Ollama model tag, for example qwen2.5-coder:7b. OLLAMA_MODEL or the CLI --model option overrides this value.</comment>
+                </field>
+                <field id="agent_num_ctx" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Agent Context Size</label>
+                    <validate>validate-digits</validate>
+                    <comment>Context tokens for coding-agent mode. Valid range: 512 to 131072. OLLAMA_NUM_CTX overrides this value.</comment>
+                </field>
+                <field id="ask_num_ctx" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Ask Context Size</label>
+                    <validate>validate-digits</validate>
+                    <comment>Context tokens for ask mode. Valid range: 512 to 131072. OLLAMA_ASK_NUM_CTX overrides this value.</comment>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
