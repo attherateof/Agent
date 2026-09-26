@@ -46,6 +46,14 @@ interface AgentSessionInteractionInterface
     public function readTask(): ?string;
 
     /**
+     * @param string $type
+     * @param string $heading
+     * @param string $body
+     * @return void
+     */
+    public function display(string $type, string $heading, string $body): void;
+
+    /**
      * @param string $text
      * @return void
      */

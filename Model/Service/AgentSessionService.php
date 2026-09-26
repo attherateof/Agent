@@ -85,7 +85,7 @@ class AgentSessionService
                 'error_message' => $exception->getMessage(),
                 'stack_trace' => $exception->getTraceAsString(),
             ]);
-            $interaction->write('<error>Fatal: ' . $exception->getMessage() . "</error>\n");
+            $interaction->display('error', 'Agent startup failed', $exception->getMessage());
 
             return false;
         }
@@ -96,13 +96,17 @@ class AgentSessionService
         }
 
         if (!$interaction->isInteractive()) {
-            $interaction->write('<error>A task is required when input is not interactive.</error>' . "\n");
+            $interaction->display('error', 'Task required', 'Provide a task when running without an interactive terminal.');
 
             return false;
         }
 
-        $interaction->write(sprintf("mage-agent (%s) - workspace: %s\n", $configuration['model'], $configuration['workspace']));
-        $interaction->write("Type a task, or 'exit' to quit.\n");
+        $interaction->display(
+            'statement',
+            'MageStack Agent',
+            sprintf("Model: %s\nWorkspace: %s", $configuration['model'], $configuration['workspace'])
+        );
+        $interaction->display('question', 'Interactive session', "Enter a task. Type 'exit' or 'quit' to finish.");
 
         $sessionSuccessful = true;
         while (true) {
@@ -135,7 +139,11 @@ class AgentSessionService
         AgentSessionInteractionInterface $interaction
     ): bool {
         $answer = $agent->run($task);
-        $interaction->write("\n" . $answer . "\n");
+        $interaction->display(
+            $agent->wasSuccessful() ? 'final' : 'error',
+            $agent->wasSuccessful() ? 'Final result' : 'Task did not complete',
+            $answer
+        );
 
         return $agent->wasSuccessful();
     }

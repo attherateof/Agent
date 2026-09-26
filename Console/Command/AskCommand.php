@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace MageStack\Agent\Console\Command;
 
 use Magento\Framework\Console\Cli;
+use MageStack\Agent\Console\AgentConsolePresenterFactory;
 use MageStack\Agent\Model\Service\AskService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -37,6 +38,7 @@ class AskCommand extends Command
      */
     public function __construct(
         private readonly AskService $askService,
+        private readonly AgentConsolePresenterFactory $consolePresenterFactory,
         ?string $name = null
     ) {
         parent::__construct($name);
@@ -63,6 +65,11 @@ class AskCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $presenter = $this->consolePresenterFactory->create([
+            'input' => $input,
+            'output' => $output,
+            'questionHelper' => $this->getHelper('question'),
+        ]);
         $numCtxOption = $input->getOption('num-ctx');
         $numCtx = $numCtxOption === null ? null : (int) $numCtxOption;
 
@@ -72,11 +79,11 @@ class AskCommand extends Command
                 $input->getOption('model') === null ? null : (string) $input->getOption('model'),
                 $numCtx
             );
-            $output->writeln($answer);
+            $presenter->display('final', 'Answer', $answer);
 
             return Cli::RETURN_SUCCESS;
         } catch (Throwable $exception) {
-            $output->writeln('<error>' . $exception->getMessage() . '</error>');
+            $presenter->display('error', 'Request failed', $exception->getMessage());
 
             return Cli::RETURN_FAILURE;
         }
