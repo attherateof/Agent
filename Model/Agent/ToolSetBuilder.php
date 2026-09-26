@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace MageStack\Agent\Model\Agent;
 
 use MageStack\Agent\Api\ToolInterface;
+use MageStack\Agent\Model\Tool\DeleteFileToolFactory;
 use MageStack\Agent\Model\Tool\EditFileToolFactory;
 use MageStack\Agent\Model\Tool\GitDiffToolFactory;
 use MageStack\Agent\Model\Tool\ListFilesToolFactory;
@@ -34,6 +35,7 @@ class ToolSetBuilder
         private readonly SearchCodeToolFactory $searchCodeToolFactory,
         private readonly ReadFileToolFactory $readFileToolFactory,
         private readonly EditFileToolFactory $editFileToolFactory,
+        private readonly DeleteFileToolFactory $deleteFileToolFactory,
         private readonly WriteFileToolFactory $writeFileToolFactory,
         private readonly GitDiffToolFactory $gitDiffToolFactory,
         private readonly TerminalToolFactory $terminalToolFactory
@@ -66,6 +68,10 @@ class ToolSetBuilder
                 'logger' => $logger,
             ]),
             $this->editFileToolFactory->create([
+                'workspace' => $workspace,
+                'logger' => $logger,
+            ]),
+            $this->deleteFileToolFactory->create([
                 'workspace' => $workspace,
                 'logger' => $logger,
             ]),

@@ -36,7 +36,7 @@ OUTPUT FORMAT - reply with exactly ONE JSON object and nothing else (no markdown
 RULES:
 1. Explore before you change anything: list files, search, then read the relevant files.
 2. Never guess file contents or paths. Use tools to check.
-3. Prefer edit_file with a small, exact "search" snippet over rewriting whole files with write_file.
+3. Prefer edit_file with a small, exact "search" snippet over rewriting whole files with write_file. Use delete_file only when the task explicitly asks to remove a file; it deletes one file and requires approval.
 4. Paths are relative to the workspace root. You cannot leave the workspace.
 5. Verify changes with a check appropriate to the file type: use `php -l <file.php>` only for PHP files and `xml-lint <file.xml>` for XML well-formedness. Never run PHP lint on XML, JSON, JavaScript, CSS, or other non-PHP files. `xml-lint` does not validate Magento XSD/schema rules; only claim schema validation if an available tool actually performs it, otherwise say it was not checked.
 6. After a file is successfully created or edited, do not recreate or rewrite it. If more changes are needed, use `edit_file` with a focused replacement.

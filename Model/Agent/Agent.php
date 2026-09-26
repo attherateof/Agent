@@ -129,11 +129,12 @@ class Agent
                 );
             }
 
-            if ($result === null && $tool === 'write_file') {
+            if ($result === null && in_array($tool, ['write_file', 'delete_file'], true)) {
                 $path = self::normalizeWritePath((string) ($plan['args']['path'] ?? ''));
                 if ($path !== '' && isset($writtenPaths[$path])) {
                     $result = sprintf(
-                        'ERROR: write_file for "%s" was blocked because this task already wrote that path. The file was not rewritten. Do not call write_file for this path again; inspect it if needed, perform the appropriate validation, then return a final response.',
+                        'ERROR: %s for "%s" was blocked because this task already changed that path. The file was not changed again. Inspect it if needed, perform the appropriate validation, then return a final response.',
+                        $tool,
                         $path
                     );
                 }
@@ -141,10 +142,11 @@ class Agent
 
             if ($result === null) {
                 $result = $this->executor->execute($tool, $plan['args']);
-                if ($tool === 'write_file' && !str_starts_with($result, 'ERROR:')) {
+                if (in_array($tool, ['write_file', 'delete_file'], true) && !str_starts_with($result, 'ERROR:')) {
                     $writtenPaths[self::normalizeWritePath((string) ($plan['args']['path'] ?? ''))] = true;
                 }
             }
+            $this->emit('result', $tool . "\n" . $result);
             $this->messages[] = ['role' => 'user', 'content' => sprintf("TOOL RESULT (%s):\n%s", $tool, $result)];
         }
 

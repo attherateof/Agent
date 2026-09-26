@@ -78,6 +78,7 @@ app/code/MageStack/Agent/
     │   └── OllamaConfigurationProvider.php
     └── Tool/
         ├── AbstractTool.php
+      ├── DeleteFileTool.php
         ├── EditFileTool.php
         ├── GitDiffTool.php
         ├── ListFilesTool.php
@@ -114,7 +115,7 @@ app/code/MageStack/Agent/
 | `Model/Context/MagentoContext.php` | Detects whether the workspace is a Magento install (`bin/magento` present) or a standalone module (`etc/module.xml`), reads the Magento edition/version from `composer.json`, lists custom modules under `app/code`, and appends a fixed block of Magento coding conventions. |
 | `Model/Context/CodebaseContext.php` | Lists top-level entries and a rough count of files by extension, so the model has a mental map before it starts calling `list_files`/`search_code`. |
 | `Model/Tool/AbstractTool.php` | Shared path resolution: blocks traversal, symlink components, paths outside the workspace, and access to `app/etc/env.php`, `.env`, and `.git`. |
-| `Model/Tool/ReadFileTool.php` / `WriteFileTool.php` / `EditFileTool.php` | File I/O. `EditFileTool` requires the "search" snippet to match exactly once — it refuses ambiguous or missing matches rather than guessing. `WriteFileTool`/`EditFileTool` both require approval. |
+| `Model/Tool/ReadFileTool.php` / `WriteFileTool.php` / `EditFileTool.php` / `DeleteFileTool.php` | Workspace-scoped file operations. `EditFileTool` requires a unique exact match; write, edit, and single-file deletion require approval. `DeleteFileTool` rejects directories, symbolic links, and protected/out-of-workspace paths. |
 | `Model/Tool/ListFilesTool.php` / `SearchCodeTool.php` | Read-only exploration tools; no approval needed. `SearchCodeTool` shells out to `grep`. |
 | `Model/Tool/TerminalTool.php` | Runs `php -l <file.php>` or `xml-lint <file.xml>` without a shell. XML checks well-formedness, not Magento schema validity. Requires approval. |
 | `Model/Tool/GitDiffTool.php` | Read-only `git diff` viewer that omits protected configuration files. |
